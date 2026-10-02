@@ -5,7 +5,7 @@
 const $ = (id) => document.getElementById(id);
 
 export class UI {
-  // handlers: { togglePlay, step, setSpeed, reset(seed), pick(x, y) }
+  // handlers: { togglePlay, step, setSpeed, reset(seed), addFoxes, pick(x, y) }
   constructor(handlers) {
     this.h = handlers;
     this.el = {
@@ -16,6 +16,7 @@ export class UI {
       seed: $('seed'),
       randomSeed: $('btn-random-seed'),
       reset: $('btn-reset'),
+      addFoxes: $('btn-add-foxes'),
       status: $('status'),
       inspector: $('inspector'),
       world: $('world'),
@@ -26,6 +27,7 @@ export class UI {
     e.step.addEventListener('click', () => this.h.step());
     e.speed.addEventListener('input', () => this.h.setSpeed(Number(e.speed.value)));
     e.reset.addEventListener('click', () => this.h.reset(this.seed()));
+    e.addFoxes.addEventListener('click', () => this.h.addFoxes());
     e.randomSeed.addEventListener('click', () => {
       e.seed.value = randomSeed();
       this.h.reset(this.seed());
@@ -76,9 +78,10 @@ export class UI {
     this.el.status.innerHTML =
       `<span>Tick <b>${world.tick}</b></span>` +
       `<span>Rabbits <b>${world.count('rabbit')}</b></span>` +
+      `<span>Foxes <b>${world.count('fox')}</b></span>` +
       `<span>Grass <b>${(world.grass.coverage() * 100).toFixed(0)}%</b></span>` +
-      `<span>Max generation <b>${world.totals.maxGeneration}</b></span>` +
-      `<span>Births <b>${world.totals.births}</b></span>` +
+      `<span>Generation <b>${world.totals.maxGeneration.rabbit}</b> / <b>${world.totals.maxGeneration.fox}</b></span>` +
+      `<span>Eaten <b>${d.eaten}</b></span>` +
       `<span>Starved <b>${d.starvation}</b></span>` +
       `<span>Old age <b>${d['old age']}</b></span>` +
       `<span>${actualTps.toFixed(0)} ticks/s</span>`;
@@ -87,7 +90,7 @@ export class UI {
   updateInspector(a, world) {
     const el = this.el.inspector;
     if (!a) {
-      el.innerHTML = '<h2>Inspector</h2><p class="muted">Click a rabbit on the map to see its genes.</p>';
+      el.innerHTML = '<h2>Inspector</h2><p class="muted">Click a rabbit or fox on the map to see its genes.</p>';
       return;
     }
     const defs = world.config[a.species].genes;
@@ -103,7 +106,7 @@ export class UI {
       : `<span class="dead">died (${a.causeOfDeath})</span>`;
 
     el.innerHTML =
-      `<h2>Rabbit #${a.id}</h2>` +
+      `<h2>${a.species === 'fox' ? 'Fox' : 'Rabbit'} #${a.id}</h2>` +
       `<dl>` +
       geneRows +
       `<dt>Energy</dt><dd>${Math.max(0, a.energy).toFixed(1)} / ${a.maxEnergy.toFixed(1)}` +
@@ -112,6 +115,7 @@ export class UI {
       `<dt>Age</dt><dd>${a.age} / ${a.maxAge}</dd>` +
       `<dt>Generation</dt><dd>${a.generation}</dd>` +
       `<dt>Children</dt><dd>${a.children}</dd>` +
+      (a.species === 'fox' ? `<dt>Rabbits eaten</dt><dd>${a.kills}</dd>` : '') +
       `<dt>Parent</dt><dd>${a.parentId ? '#' + a.parentId : 'founder'}</dd>` +
       `<dt>Status</dt><dd>${status}</dd>` +
       `</dl>`;

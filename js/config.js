@@ -59,6 +59,62 @@ export const CONFIG = {
 
     wanderTurn: 0.35,       // std dev of random heading change per tick while wandering (radians)
     searchCooldown: 6,      // ticks to wait before searching again after finding nothing
+    radiusBase: 2,          // drawn radius = radiusBase + radiusPerSize * size
+    radiusPerSize: 2.2,
+  },
+
+  // Foxes hunt rabbits. Same energy model as rabbits; the genes have their own bounds.
+  fox: {
+    initialCount: 12,
+    addCount: 5,            // how many the "+ Foxes" button drops in
+
+    genes: {
+      speed:  { min: 0.2, max: 5.0,  initial: 1.6, label: 'Speed',  unit: 'u/tick' },
+      size:   { min: 0.5, max: 2.5,  initial: 1.2, label: 'Size',   unit: '' },
+      vision: { min: 10,  max: 200,  initial: 50,  label: 'Vision', unit: 'u' },
+    },
+    initialSpread: 0.05,
+
+    cost: {
+      base: 0.04,
+      k1: 0.01,
+      k2: 0.0008,
+      k3: 0.02,
+    },
+
+    maxEnergyPerSize3: 80,
+    startEnergyFraction: 0.7,
+
+    maxAge: 4000,
+    maxAgeJitter: 0.2,
+    maturityAge: 500,
+    reproThreshold: 0.8,
+    reproCooldown: 500,
+    childEnergyFraction: 0.5,
+    birthEfficiency: 0.8,
+
+    wanderTurn: 0.25,
+    radiusBase: 3,
+    radiusPerSize: 2.5,
+
+    // Eating a rabbit yields meatPerSize3 * rabbitSize^3 plus energyTransfer
+    // of the energy the rabbit was carrying.
+    meatPerSize3: 100,
+    energyTransfer: 0.3,
+    // When a fox reaches a rabbit, the catch succeeds with probability
+    // catchBase * foxSize / rabbitSize (capped at 1), so big rabbits can fight free.
+    catchBase: 0.6,
+    // Territory: a fox only breeds if at most maxNeighbours other foxes are
+    // within territoryRadius. Like real territorial carnivores, this caps fox
+    // density and keeps foxes from overshooting and wiping out their prey.
+    territoryRadius: 140,
+    maxNeighbours: 0,
+    huntBelow: 0.9,         // a fox only hunts when its energy is below this fraction of max
+    reach: 2,               // extra distance beyond touching at which a catch is attempted
+    digestTicks: 30,        // rests this long after a meal
+    missRest: 20,           // rests this long after a failed catch
+    maxChase: 150,          // gives up a chase after this many ticks...
+    tiredRest: 60,          // ...and rests this long
   },
 
   mutation: {

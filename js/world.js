@@ -20,16 +20,30 @@ export class World {
 
     const { width, height } = this.config.world;
     this.grass = new Grass(this.config.grass, width, height, this.rng);
-    this.spatial = new SpatialHash(width, height, 25);
+    this.speciesNames = Object.keys(SPECIES);
 
-    this.totals = { births: 0, deaths: { starvation: 0, 'old age': 0 }, maxGeneration: 0 };
-    this.stats = new StatsHistory(this.config.stats, {
-      rabbit: Object.keys(this.config.rabbit.genes),
-    });
+    // One spatial hash per species, so a rabbit looking for foxes never has
+    // to scan past hundreds of other rabbits.
+    this.spatial = {};
+    for (const sp of this.speciesNames) this.spatial[sp] = new SpatialHash(width, height, 25);
 
-    this.populate('rabbit', this.config.rabbit.initialCount);
-    this.spatial.rebuild(this.animals);
+    this.totals = { births: 0, deaths: { starvation: 0, 'old age': 0, eaten: 0 }, maxGeneration: {} };
+    const speciesGenes = {};
+    for (const sp of this.speciesNames) {
+      speciesGenes[sp] = Object.keys(this.config[sp].genes);
+      this.totals.maxGeneration[sp] = 0;
+    }
+    this.stats = new StatsHistory(this.config.stats, speciesGenes);
+
+    for (const sp of this.speciesNames) this.populate(sp, this.config[sp].initialCount);
+    this.rebuildSpatial();
     this.stats.record(this);
+  }
+
+  // Drop `count` new founders of a species at random places (used by the UI).
+  addAnimals(species, count) {
+    this.populate(species, count);
+    this.rebuildSpatial();
   }
 
   populate(species, count) {
@@ -56,7 +70,7 @@ export class World {
     const child = this.createAnimal(species, x, y, genes, energy, generation, parentId);
     this.newborns.push(child);
     this.totals.births++;
-    if (generation > this.totals.maxGeneration) this.totals.maxGeneration = generation;
+    if (generation > this.totals.maxGeneration[species]) this.totals.maxGeneration[species] = generation;
     return child;
   }
 
@@ -77,8 +91,13 @@ export class World {
       this.newborns.length = 0;
     }
     this.animals = this.animals.filter((a) => a.alive);
-    this.spatial.rebuild(this.animals);
+    this.rebuildSpatial();
     this.stats.record(this);
+  }
+
+  rebuildSpatial() {
+    for (const sp of this.speciesNames) this.spatial[sp].clear();
+    for (const a of this.animals) if (a.alive) this.spatial[a.species].insert(a);
   }
 
   count(species) {
@@ -89,6 +108,14 @@ export class World {
 
   // Animal closest to (x, y) within `radius`, for click selection.
   animalAt(x, y, radius = 12) {
-    return this.spatial.nearest(x, y, radius);
+    let best = null, bestD2 = Infinity;
+    for (const sp of this.speciesNames) {
+      const a = this.spatial[sp].nearest(x, y, radius);
+      if (a) {
+        const d2 = (a.x - x) ** 2 + (a.y - y) ** 2;
+        if (d2 < bestD2) { best = a; bestD2 = d2; }
+      }
+    }
+    return best;
   }
 }

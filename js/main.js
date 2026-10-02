@@ -41,6 +41,10 @@ const ui = new UI({
   reset(seed) {
     reset(seed);
   },
+  addFoxes() {
+    app.world.addAnimals('fox', app.world.config.fox.addCount);
+    redraw();
+  },
   pick(x, y) {
     app.selected = app.world.animalAt(x, y, 14);
     ui.updateInspector(app.selected, app.world);
@@ -52,12 +56,16 @@ function reset(seed) {
   app.world = new World(CONFIG, seed);
   app.selected = null;
   renderer.attach(app.world);
-  charts.setData(app.world.stats, app.world.config.rabbit.genes);
+  charts.setData(app.world.stats, app.world.config);
   ui.setSeed(seed);
   ui.updateInspector(null, app.world);
   const url = new URL(location.href);
   url.searchParams.set('seed', seed);
-  history.replaceState(null, '', url);
+  try {
+    history.replaceState(null, '', url);
+  } catch {
+    // Some sandboxed frames refuse URL changes; the seed box still shows the seed.
+  }
   redraw();
 }
 

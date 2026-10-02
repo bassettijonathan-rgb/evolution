@@ -1,8 +1,9 @@
 // Draws the world onto the main canvas.
 // Grass is painted into a tiny offscreen canvas (one pixel per cell) and scaled
 // up, which is far cheaper than filling thousands of rectangles.
-// Animals: hue = speed (blue slow -> red fast), radius = size,
-// lightness = vision (pale = far-sighted).
+// Animals: hue = speed (blue slow -> red fast, on each species' own gene range),
+// radius = size, lightness = vision (pale = far-sighted).
+// Rabbits are circles; foxes are outlined triangles pointing where they head.
 
 import { normalizedGene } from './genes.js';
 
@@ -37,17 +38,42 @@ export class Renderer {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.grassCanvas, 0, 0, this.canvas.width, this.canvas.height);
 
-    const defs = w.config.rabbit.genes;
-    for (const a of w.animals) {
-      const hue = 240 - 240 * normalizedGene(a.genes.speed, defs.speed);
-      const light = 42 + 30 * normalizedGene(a.genes.vision, defs.vision);
-      ctx.fillStyle = `hsl(${hue.toFixed(0)}, 85%, ${light.toFixed(0)}%)`;
-      ctx.beginPath();
-      ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Rabbits first so foxes are drawn on top.
+    for (const a of w.animals) if (a.species === 'rabbit') this.drawRabbit(a);
+    for (const a of w.animals) if (a.species === 'fox') this.drawFox(a);
 
     if (selected && selected.alive) this.drawSelection(selected);
+  }
+
+  geneColor(a) {
+    const defs = this.world.config[a.species].genes;
+    const hue = 240 - 240 * normalizedGene(a.genes.speed, defs.speed);
+    const light = 42 + 30 * normalizedGene(a.genes.vision, defs.vision);
+    return `hsl(${hue.toFixed(0)}, 85%, ${light.toFixed(0)}%)`;
+  }
+
+  drawRabbit(a) {
+    const ctx = this.ctx;
+    ctx.fillStyle = this.geneColor(a);
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawFox(a) {
+    const ctx = this.ctx;
+    const r = a.radius * 1.5;
+    const h = a.heading;
+    ctx.beginPath();
+    ctx.moveTo(a.x + Math.cos(h) * r, a.y + Math.sin(h) * r);
+    ctx.lineTo(a.x + Math.cos(h + 2.4) * r, a.y + Math.sin(h + 2.4) * r);
+    ctx.lineTo(a.x + Math.cos(h - 2.4) * r, a.y + Math.sin(h - 2.4) * r);
+    ctx.closePath();
+    ctx.fillStyle = this.geneColor(a);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff4e8';
+    ctx.stroke();
   }
 
   drawGrass() {
@@ -76,8 +102,14 @@ export class Renderer {
     ctx.arc(a.x, a.y, a.genes.vision, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    // Line to the food it is walking to
-    if (a.target >= 0) {
+    // Line to the food or prey it is heading for
+    if (a.prey && a.prey.alive) {
+      ctx.strokeStyle = 'rgba(255,120,80,0.8)';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(a.prey.x, a.prey.y);
+      ctx.stroke();
+    } else if (a.target >= 0) {
       const g = this.world.grass;
       ctx.strokeStyle = 'rgba(255,255,255,0.6)';
       ctx.beginPath();

@@ -81,8 +81,13 @@ the cost of reproducing. The child copies each gene; with probability
 `mutation.size × (max − min)`, then clamped to the gene's bounds. The child's
 generation is one more than its parent's.
 
-### Behaviour (rabbit, phase 1)
+### Behaviour: rabbits
 
+- If a **hunting** fox is within `vision`, flee: run directly away from it,
+  steering off walls so the rabbit runs along an edge instead of into a
+  corner. Fleeing comes before eating. Resting or well-fed foxes are ignored,
+  as real prey learn to do. Without this, far-sighted rabbits spent so much
+  time running from harmless foxes that they starved.
 - If the current grass cell holds at least `minToEat`, graze. The rabbit
   stops moving and eats one bite per tick.
 - Otherwise, if it has a target cell that still has grass, walk to it.
@@ -93,13 +98,38 @@ generation is one more than its parent's.
 - With no target, wander: a random walk with small heading changes, bouncing
   off the world edges.
 
+### Behaviour: foxes (phase 2)
+
+- After a meal (`digestTicks`), a missed catch (`missRest`) or a chase longer
+  than `maxChase` (`tiredRest`), the fox stands still.
+- A fox only hunts when its energy is below `huntBelow × maxEnergy`.
+- Otherwise it chases the nearest rabbit within `vision` that no other fox is
+  already chasing. On reaching it, the catch succeeds with probability
+  `min(1, catchBase × foxSize / rabbitSize)`, so big rabbits can fight free.
+- A catch yields `meatPerSize3 × rabbitSize³ + energyTransfer × rabbitEnergy`.
+- **Territory:** a fox only breeds when at most `maxNeighbours` other foxes
+  are within `territoryRadius`.
+
+#### Why territory? (tuning notes)
+
+Food alone did not give stable predator-prey dynamics in a world this small.
+Strong foxes overshot, wiped out the rabbits and then starved. Weak foxes
+could not make a living at all. The window between was too narrow for
+evolution to stay inside, because evolution moves the parameters: rabbits
+got smaller, which cut the energy in each meal. Ecology suggests the fix:
+predators that limit their own density, as territorial carnivores do. With
+strict territories, both species survived 30,000 ticks in 10 out of 10 test
+seeds (`tools/headless.mjs`). Foxes hold at about 35–50 and rabbits cycle
+between about 220 and 550.
+
 ### Performance
 
 - Grass is stored in a `Float32Array` and drawn through a cols×rows
   `ImageData` that is scaled up with `drawImage`, using one blit per frame.
 - `SpatialHash` is a uniform bucket grid that is rebuilt every tick. It makes
-  neighbour queries O(k). Phase 1 uses it for click picking. Phase 2 uses it
-  for hunting and fleeing.
+  neighbour queries O(k). There is one hash per species, so a rabbit looking
+  for foxes never scans past hundreds of other rabbits. They serve hunting,
+  fleeing, fox territories and click picking.
 - Food search uses an early-exit ring search and a cooldown after a failed search.
 - The loop runs N ticks per frame at speed N, within a 30 ms time budget per
   frame, so the page stays responsive.
@@ -125,7 +155,7 @@ js/rng.js             seeded RNG (mulberry32) and string → seed hashing
 js/genes.js           gene creation, mutation and clamping (works for any species)
 js/grass.js           grass grid: growth, eating, nearest-food search, fertility
 js/spatial.js         spatial hash for neighbour queries
-js/animal.js          Animal base class, Rabbit, SPECIES registry
+js/animal.js          Animal base class, Rabbit, Fox, SPECIES registry
 js/world.js           World: owns the state and steps the simulation
 js/stats.js           time series history for the charts (bounded)
 js/render.js          draws grass and animals on the world canvas
@@ -153,7 +183,7 @@ package.json          only tells Node to treat .js files as ES modules (no depen
 
 ## Feature roadmap
 
-### Phase 1: Grass and rabbits (this release)
+### Phase 1: Grass and rabbits (done)
 - Grass grid with regrowth.
 - Rabbits with speed, size and vision genes, energy, ageing, starvation,
   reproduction with mutation.
@@ -164,19 +194,27 @@ package.json          only tells Node to treat .js files as ES modules (no depen
 - Click an animal to inspect its genes, energy, age, generation, children and parent.
 - Headless stability script.
 
-### Phase 2: Predators
-- `Fox` subclass with its own genes (speed, size, vision, possibly stamina)
-  and its own config block.
-- Foxes use the spatial hash to find the nearest rabbit within vision, chase
-  it and eat it on contact. Energy gained scales with the rabbit's size.
-- Rabbits use vision to detect foxes. Fleeing (moving directly away) takes
-  priority over eating.
-- Possibly a size advantage in fights: a fox can only take rabbits up to a
-  certain size relative to its own. This keeps rabbit size from being free.
-- Charts gain fox population and fox gene panels, and the rabbit and fox
-  speed panels share a scale so arms races are visible.
-- Tuning goal: stable Lotka–Volterra-style cycles instead of extinction.
-  The headless script will report fox/rabbit extinction rates over many seeds.
+### Phase 2: Predators (done)
+- `Fox` subclass with its own genes (speed, size, vision) and its own config block.
+- Foxes use the spatial hash to find the nearest unclaimed rabbit within
+  vision, chase it and try to catch it on contact. Energy gained scales with
+  the rabbit's size.
+- Rabbits use vision to detect hunting foxes and flee, which takes priority
+  over eating.
+- Size matters in fights: catch chance = `catchBase × foxSize / rabbitSize`.
+- Foxes are territorial: they only breed with no other fox close by.
+- Foxes are drawn as outlined triangles pointing where they are heading. A
+  selected fox shows a line to its prey.
+- Charts: rabbit and fox population panels. Each gene panel plots both
+  species on one shared scale, so arms races are visible. One colour per
+  species throughout.
+- "+ Foxes" button drops in five new foxes, for example to re-introduce
+  them after they die out.
+- Inspector shows a fox's kill count. The status bar shows deaths by cause
+  (eaten, starved, old age).
+- Observed: a speed arms race. Over 30,000 ticks, rabbit speed rose from 1.5
+  to about 2.5 and fox speed from 1.6 to about 2.5, the two tracking each
+  other. Rabbits got smaller (≈ 0.6) and foxes slightly larger (≈ 1.3).
 
 ### Phase 3: Seasons and terrain
 - A sine-wave season sets `grass.growthMultiplier`. Winter is lean, which
