@@ -1,0 +1,10 @@
+{
+  "name": "evolution",
+  "private": true,
+  "type": "module",
+  "description": "Browser evolution simulator. No build step; this file only tells Node to treat js/*.js as ES modules for the headless check.",
+  "scripts": {
+    "headless": "node tools/headless.mjs",
+    "serve": "python3 -m http.server 8000"
+  }
+}

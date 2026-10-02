@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evolution Simulator</title>
+  <meta name="description" content="Watch natural selection emerge: rabbits with inherited, mutating genes compete for grass.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Evolution Simulator</h1>
+    <div class="controls" role="toolbar" aria-label="Simulation controls">
+      <button id="btn-play" type="button" title="Play / pause (Space)">Pause</button>
+      <button id="btn-step" type="button" title="Advance one tick (.)">Step</button>
+      <label class="speed">
+        Speed
+        <input id="speed" type="range" min="1" max="50" step="1" value="1">
+        <output id="speed-label">1x</output>
+      </label>
+      <label class="seed">
+        Seed
+        <input id="seed" type="text" spellcheck="false" autocomplete="off">
+      </label>
+      <button id="btn-random-seed" type="button" title="Pick a random seed and reset">Random</button>
+      <button id="btn-reset" type="button" title="Restart with the seed above (R)">Reset</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="world-panel">
+      <canvas id="world" aria-label="Simulation world. Click an animal to inspect it."></canvas>
+      <div class="statusbar" id="status"></div>
+      <p class="legend">
+        <span class="swatch-row">
+          Colour = speed:
+          <span class="gradient" aria-hidden="true"></span>
+          <span>slow → fast</span>
+        </span>
+        <span>Size = size gene</span>
+        <span>Paler = longer vision</span>
+        <span>Click a rabbit to inspect it</span>
+      </p>
+    </section>
+
+    <aside class="side-panel">
+      <section class="card inspector" id="inspector" aria-live="polite">
+        <h2>Inspector</h2>
+        <p class="muted">Click a rabbit on the map to see its genes.</p>
+      </section>
+      <section class="card charts-card">
+        <canvas id="charts" aria-label="Charts of population, grass cover and average genes over time"></canvas>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
